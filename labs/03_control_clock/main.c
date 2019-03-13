@@ -64,7 +64,9 @@ static void rcc_config()
 static void gpio_config(void)
 {
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
     return;
 }
 
@@ -99,8 +101,10 @@ int main(void)
 
     while (1) {
         LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_8);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_15);
         delay();
         LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_8);
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_15);
         delay();
     }
     return 0;

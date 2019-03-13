@@ -92,6 +92,10 @@ int main(void)
 
     while (1) {
         delay();
+        delay();
+        delay();
+        delay();
+        delay();
         NVIC_SystemReset();
     }
     return 0;
