@@ -9,6 +9,7 @@
 #include "stm32f0xx_ll_gpio.h"
 #include "stm32f0xx_ll_utils.h"
 #include "stm32f0xx_ll_tim.h"
+#include "stm32f0xx_ll_rtc.h"
 
 #define FLASH_0LAT_DELAY0LAT
 //#define FLASH_0LAT_DELAY1LAT
@@ -58,6 +59,8 @@ static void rcc_config()
     /* Update CMSIS variable (which can be updated also
      * through SystemCoreClockUpdate function) */
     SystemCoreClock = 48000000;
+
+    LL_RCC_LSE_Enable ();
 }
 
 /*
@@ -66,8 +69,22 @@ static void rcc_config()
 static void gpio_config(void)
 {
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOB);
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+
     LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
+
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_4, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_5, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_6, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_8, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_9, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_14, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_15, LL_GPIO_MODE_OUTPUT);
+
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_2, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
@@ -81,6 +98,22 @@ static void gpio_config(void)
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_12, LL_GPIO_MODE_OUTPUT);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_13, LL_GPIO_MODE_OUTPUT);
     return;
+}
+
+RTC_TypeDef rtc_time;
+
+static void rtc_config(void)
+{
+    LL_RCC_SetRTCClockSource (LL_RCC_RTC_CLKSOURCE_LSE);
+    LL_RCC_EnableRTC ();
+    LL_RTC_EnterInitMode (&rtc_time);
+    LL_RTC_DisableWriteProtection (&rtc_time);
+    LL_RTC_TIME_Config (&rtc_time, LL_RTC_TIME_FORMAT_AM_OR_24, 0x00, 0x00, 0x00);
+    LL_RTC_DATE_SetMonth (&rtc_time, LL_RTC_MONTH_MARCH);
+    LL_RTC_DATE_SetDay (&rtc_time, 0x16);
+    LL_RTC_EnableWriteProtection (&rtc_time);
+    LL_RTC_ExitInitMode (&rtc_time);
+    LL_RTC_WaitForSynchro (&rtc_time);
 }
 
 enum { A = LL_GPIO_PIN_1,
@@ -287,6 +320,61 @@ static void print_ind (unsigned n, unsigned time) {
     }
 }
 
+void show_month (uint8_t m) {
+    (m == 0x10U) ? m -= 6 : m;
+    (m == 0x11U) ? m -= 6 : m;
+    (m == 0x12U) ? m -= 6 : m;
+    uint8_t quarter = (m - 1) / 3;
+    switch (quarter) {
+    case (0):
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_15);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_14);
+	break;
+    case (1):
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_15);
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_14);
+	break;
+    case (2):
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_15);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_14);
+	break;
+    case (3):
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_15);
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_14);
+	break;
+    default:
+	break;
+    }
+
+    switch ((m - 1) % 3) {
+    case (2):
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_4);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
+	break;
+    case (1):
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_4);
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
+	break;
+    case (0):
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_4);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
+	break;
+    default:
+	break;
+    }
+}
+
+void show_day (uint32_t day) {
+	day -= (day >> 4) * 6;
+	(day & 0x1) ? LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_9) : LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_9);
+	((day >> 1) & 0x1) ? LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_8) : LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_8);
+	((day >> 2) & 0x1) ? LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_7) : LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_7);
+	((day >> 3) & 0x1) ? LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_6) : LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_6);
+	((day >> 4) & 0x1) ? LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_5) : LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_5);
+}
 
 /*
  * Just set of commands to waste CPU power for a second
@@ -316,6 +404,7 @@ int main(void)
 {
     rcc_config();
     gpio_config();
+    rtc_config();
     LL_Init1msTick(48000000);
 
     unsigned counter = 0, bcounter = 0, delay_time = 5;
@@ -323,20 +412,56 @@ int main(void)
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_5);
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_6);
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_7);
+
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_4);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_5);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_6);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_7);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_8);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_9);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_14);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_15);
     //delay();
+    
+    uint32_t time_now = LL_RTC_TIME_Get (&rtc_time), day;
+
+    uint8_t month;
 
     while (1) {
-        if (counter == 3) {
+	/*
+        if (counter == 10) {
 		++bcounter;
 		counter = 0;
 	}
+	*/
 
+	time_now = LL_RTC_TIME_Get (&rtc_time);
+
+	//Seconds
+	(!(time_now % 2)) ? LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_8) : LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_8);
+	
+	//Hours and Minuets
+	time_now = time_now >> 2;
+	print_ind (time_now, delay_time);
+
+	//Month
+	month = LL_RTC_DATE_GetMonth (&rtc_time);
+	show_month (month);
+
+	//Day
+	day = LL_RTC_DATE_GetDay (&rtc_time);
+	show_day (day);
+
+	/*
         bcounter = bcounter % 0x10000;
 	(!(bcounter % 2)) ? LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_8) : LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_8);
 	print_ind (bcounter, delay_time);
 	//delay();
-	LL_mDelay(1);
+	LL_mDelay(3);
 	++counter;
+	*/
     }
     return 0;
 }
